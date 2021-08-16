@@ -63,6 +63,30 @@ defmodule GenReport do
     }
   end
 
+  def build_from_many(filenames) do
+    filenames
+    |> Task.async_stream(&build/1)
+    |> Enum.reduce(report_acc(), fn {:ok, result}, report -> sum_reports(report, result) end)
+  end
+
+  defp sum_reports(report, result) do
+    Map.merge(report, result, fn _k, value1, value2 ->
+      if is_map(value1) do
+        sum_reports(value1, value2)
+      else
+        value1 + value2
+      end
+    end)
+  end
+
+  defp report_acc() do
+    %{
+      "all_hours" => names_acc(),
+      "hours_per_month" => name_month_acc(),
+      "hours_per_year" => year_name_acc()
+    }
+  end
+
   defp all_hours(report_stream) do
     report_stream
     |> Enum.reduce(names_acc(), fn line, report -> sum_hours_by_name(line, report) end)
